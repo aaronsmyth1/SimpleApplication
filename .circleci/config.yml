@@ -1,34 +1,50 @@
-# This config was automatically generated from your source code
-# Stacks detected: deps:node:SimpleApplication
 version: 2.1
+
 orbs:
   node: circleci/node@5
+
 jobs:
   test-node:
-    # Install node dependencies and run tests
     executor: node/default
     working_directory: ~/project/SimpleApplication
     steps:
       - checkout:
           path: ~/project
+
       - node/install-packages:
           pkg-manager: npm
+
       - run:
           name: Run tests
           command: npm test --passWithNoTests
+
   deploy:
-    # This is an example deploy job, not actually used by the workflow
     docker:
       - image: cimg/base:stable
+    working_directory: ~/project/SimpleApplication
     steps:
-      # Replace this with steps to deploy to users
+      - checkout:
+          path: ~/project
+
       - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
+          name: Install dependencies
+          command: npm install
+
+      - run:
+          name: Build application
+          command: npm run build || echo "No build step"
+
+      - run:
+          name: Deploy application
+          command: |
+            echo "Deploying application..."
+            # Example deployment command
+            # Replace this with your hosting platform deployment
+
 workflows:
-  build-and-test:
+  build-test-deploy:
     jobs:
       - test-node
-    # - deploy:
-    #     requires:
-    #       - test-node
+      - deploy:
+          requires:
+            - test-node
