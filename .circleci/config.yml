@@ -1,1 +1,53 @@
 
+version: 2.1
+
+orbs:
+  node: circleci/node@5
+
+jobs:
+  test-node:
+    executor: node/default
+    working_directory: ~/project/SimpleApplication
+    steps:
+      - checkout:
+          path: ~/project
+      - node/install-packages:
+          pkg-manager: npm
+      - run:
+          name: Run tests
+          command: npm test --passWithNoTests
+
+  deploy:
+    docker:
+      - image: cimg/base:stable
+    working_directory: ~/project/SimpleApplication
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install dependencies
+          command: npm install
+      - run:
+          name: Build application
+          command: npm run build || echo "No build step"
+      - run:
+          name: Deploy to EC2
+          command: |
+            echo "Deploying application to EC2..."
+            # Copy project to EC2
+            scp -o StrictHostKeyChecking=no -i ~/project/devopskeypair.pem -r ~/project/SimpleApplication ubuntu@13.60.221.5:~/SimpleApplication
+            # SSH into EC2 and start Node
+            ssh -o StrictHostKeyChecking=no -i ~/project/devopskeypair.pem ubuntu@13.60.221.5 << 'ENDSSH'
+              cd ~/SimpleApplication
+              npm install
+              pkill node || echo "No previous Node process"
+              nohup npm start > app.log 2>&1 &
+            ENDSSH
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - test-node
+      - deploy:
+          requires:
+            - test-node
