@@ -30,19 +30,13 @@ jobs:
       - run:
           name: Build application
           command: npm run build || echo "No build step"
-      - run:
-          name: Deploy to EC2
-          command: |
-            echo "Deploying application to EC2..."
-            # Copy project to EC2
-            scp -o StrictHostKeyChecking=no -i ~/project/devopskeypair.pem -r ~/project/SimpleApplication ubuntu@13.60.221.5:~/SimpleApplication
-            # SSH into EC2 and start Node
-            ssh -o StrictHostKeyChecking=no -i ~/project/devopskeypair.pem ubuntu@13.60.221.5 << 'ENDSSH'
-              cd ~/SimpleApplication
-              npm install
-              pkill node || echo "No previous Node process"
-              nohup npm start > app.log 2>&1 &
-            ENDSSH
+- run:
+    name: Deploy to EC2
+    command: |
+      echo "Deploying application to EC2..."
+      scp -o StrictHostKeyChecking=no -i ~/project/devopskeypair.pem -r ~/project/SimpleApplication ubuntu@13.60.221.5:~/SimpleApplication
+      
+      ssh -o StrictHostKeyChecking=no -i ~/project/devopskeypair.pem ubuntu@13.60.221.5 "cd ~/SimpleApplication && npm install && pkill node || true && nohup npm start > app.log 2>&1 &"
 
 workflows:
   build-test-deploy:
