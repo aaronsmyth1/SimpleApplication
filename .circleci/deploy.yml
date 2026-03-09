@@ -7,7 +7,7 @@ version: 2.1
 jobs:
   deploy-component:
     docker:
-      - image: cimg/base:current
+      - image: cimg/node:18.20
     environment:
       COMPONENT_NAME: << pipeline.deploy.component_name >>
       NAMESPACE: << pipeline.deploy.namespace >>
