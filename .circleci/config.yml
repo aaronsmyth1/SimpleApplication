@@ -18,7 +18,7 @@ jobs:
 
   deploy:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/node:18.20
     working_directory: ~/project/SimpleApplication
     steps:
       - checkout:
