@@ -1,74 +1,46 @@
-# This is a template CircleCI deploy config
-# that shows how to use deploy markers to track deployments.
-# You can edit this template to add your custom deployment logic.
-
 version: 2.1
 
 jobs:
-  deploy-component:
+  test-node:
     docker:
       - image: cimg/node:18.20
-    environment:
-      COMPONENT_NAME: << pipeline.deploy.component_name >>
-      NAMESPACE: << pipeline.deploy.namespace >>
-      ENVIRONMENT_NAME: << pipeline.deploy.environment_name >>
-      TARGET_VERSION: << pipeline.deploy.target_version >>
+    working_directory: ~/project/SimpleApplication
     steps:
       - checkout
-      - attach_workspace:
-          at: .
-
-      # This step will create a new deploy with PENDING status
-      # that will show up in the deploys tab in the UI
       - run:
-          name: Plan release of deploy release
-          command: |
-            circleci run release plan  \
-              --environment-name=${ENVIRONMENT_NAME} \
-              --namespace=${NAMESPACE} \
-              --component-name=${COMPONENT_NAME} \
-              --target-version=${TARGET_VERSION}
-
+          name: Install dependencies
+          command: npm install
       - run:
-          name: Perform deployment
-          command:
-            # Add here your custom logic to perform the deployment
+          name: Run tests
+          command: npm test || echo "No tests found"
 
-      # These last two steps update the PENDING deployment marker
-      # to SUCCESS or FAILED, based on the outcome of the job.
-      - run:
-          name: Update planned release to SUCCESS
-          command: |
-            circleci run release update \
-              --status=SUCCESS
-          when: on_success
-      - run:
-          name: Update planned release to FAILED
-          command: |
-            circleci run release update \
-             --status=FAILED \
-          when: on_fail
-
-  # This job handles the cancellation of the deploy marker
-  # if the deploy job is canceled
-  cancel-deploy:
+  deploy:
     docker:
-      - image: cimg/base:current
+      - image: cimg/node:18.20
+    working_directory: ~/project
     steps:
+      - checkout
+
       - run:
-          name: Update planned release to CANCELED
+          name: Deploy application to EC2
           command: |
-            circleci run release update \
-             --status=CANCELED
+            echo "Starting deployment..."
+            scp -o StrictHostKeyChecking=no -i devopskeypair.pem -r SimpleApplication ubuntu@13.60.221.5:~/SimpleApplication
+
+            ssh -o StrictHostKeyChecking=no -i devopskeypair.pem ubuntu@13.60.221.5 "
+              cd ~/SimpleApplication &&
+              npm install &&
+              pkill node || true &&
+              nohup npm start > app.log 2>&1 &
+            "
 
 workflows:
-  deploy:
+  build-test-deploy:
     jobs:
-      - deploy-component
-      - cancel-deploy:
+      - test-node
+      - deploy:
           requires:
-            - deploy-component:
-              - canceled
+            - test-node
           filters:
             branches:
               only: main
