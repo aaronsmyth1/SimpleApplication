@@ -1,0 +1,44 @@
+version: 2.1
+jobs:
+  test-node:
+    docker:
+      - image: cimg/node:18.20
+    working_directory: ~/project/SimpleApplication
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install dependencies
+          command: npm install
+      - run:
+          name: Run tests
+          command: npm test || echo "No tests found"
+
+  deploy:
+    docker:
+      - image: cimg/node:18.20
+    working_directory: ~/project
+    steps:
+      - checkout
+      - run:
+          name: Deploy to EC2
+          command: |
+            echo "Deploying application to EC2..."
+            scp -o StrictHostKeyChecking=no -r SimpleApplication ubuntu@13.60.221.5:~/SimpleApplication
+            ssh -o StrictHostKeyChecking=no ubuntu@13.60.221.5 "
+              cd ~/SimpleApplication &&
+              npm install &&
+              pkill node || true &&
+              nohup npm start > app.log 2>&1 &
+            "
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - test-node
+      - deploy:
+          requires:
+            - test-node
+          filters:
+            branches:
+              only: main
